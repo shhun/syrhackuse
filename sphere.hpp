@@ -6,21 +6,29 @@
 #include "hit_record.hpp"
 #include "cassert"
 #include "cstdio"
+#include "material.hpp"
 
 struct Sphere {
-  Vec3 center, albedo;
+  Vec3 center;
   double radius;
+  Material material;
 
   Sphere(Vec3 center, double radius){
     this->center = center;
     this->radius = radius;
-    this->albedo = Vec3(1., 1., 1.);
+    this->material = Material();
   }
 
   Sphere(Vec3 center, double radius, Vec3 albedo){
     this->center = center;
     this->radius = radius;
-    this->albedo = albedo;
+    this->material = Material(albedo, false);
+  }
+
+  Sphere(Vec3 center, double radius, Material material){
+    this->center = center;
+    this->radius = radius;
+    this->material = material;
   }
 
   bool hit(Ray ray, Hit_record &hr){
@@ -50,18 +58,20 @@ struct Sphere {
       double r1 = (-b + root_discriminant)/a;
       double r2 = (-b - root_discriminant)/a;
       
+      // If there is a hit, take the closest one 
+      // and update hit_record accordingly
       if (r2 > 0){
         hr.t = r2;
         hr.p = ray.point_at_parameter(hr.t);
         hr.normal = (hr.p - this->center).normalize();
-        hr.albedo = this->albedo;
+        hr.material = this->material;
 
         return true;
       } else if (r1 > 0){
         hr.t = r1;
         hr.p = ray.point_at_parameter(hr.t);
         hr.normal = (hr.p - this->center).normalize();
-        hr.albedo = this->albedo;
+        hr.material = this->material;
 
         return true;
       }

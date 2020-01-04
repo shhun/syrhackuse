@@ -26,22 +26,22 @@ Vec3 get_color(Scene scene, Ray r, int nb_rebound) {
         Vec3 l_ = (scene.light- r.point_at_parameter(ht.t));
         Vec3 l = (scene.light- r.point_at_parameter(ht.t)).normalize();
 
-        if (nb_rebound > 0 && ht.specular) { // specular
+        if (nb_rebound > 0 && ht.material.is_specular()) { // specular
             Ray reflected_ray(ht.p, reflect(r.direction.normalize(), ht.normal));
             color = get_color(scene, reflected_ray, nb_rebound -1);
-        } else if (!ht.specular) {          // shadow
+        } else if (!ht.material.is_specular()) {          // shadow
 
             
             Ray shadow_ray(ht.p + (ht.normal * EPSILON), l);
 
             if (scene.hit(shadow_ray, shadow_ht) && (( (ht.p - shadow_ht.p).norm() < l.norm() ))) {
-               ht.albedo = Vec3(0., 0., 0.); // shadow point (ie null albedo) 
+               ht.material.albedo = Vec3(0., 0., 0.); // shadow point (ie null albedo) 
             }
 
             double c = std::min(255., 3000 * std::max(0., l.dot(ht.normal)) / pow((ht.p- scene.light).norm(), 1));
-            color.x =  c * ht.albedo.x;     // RED
-            color.y = c * ht.albedo.y; // GREEN
-            color.z = c * ht.albedo.z; // BLUE
+            color.x =  c * ht.material.albedo.x;     // RED
+            color.y = c * ht.material.albedo.y; // GREEN
+            color.z = c * ht.material.albedo.z; // BLUE
         }
     }
 
@@ -58,12 +58,14 @@ int main() {
     Hit_record ht, shadow_ht;
     Sphere sphere(Vec3(0., 0., -1.), 1);
     Sphere sphere_inv(Vec3(0., 0., -10.), 1);
+
+     
     Sphere ground(Vec3(0., -1000., 0.), 999, Vec3(1., 0., 0.));
     Sphere background(Vec3(0., 0., -1000.), 997, Vec3(0., 1., 0.));
     Sphere left_wall(Vec3(-1000., 0., 0.), 998, Vec3(0., 5., 5.));
     Sphere right_wall(Vec3(1000., 0., 0.), 998, Vec3(0., 5., 5.));
 
-    //scene.objects.push_back(sphere_inv);
+    scene.objects.push_back(sphere_inv);
     scene.objects.push_back(sphere);
     scene.objects.push_back(background);
     scene.objects.push_back(left_wall);
@@ -91,13 +93,13 @@ int main() {
                 Ray shadow_ray(ht.p + (ht.normal * EPSILON), l);
 
                 if (scene.hit(shadow_ray, shadow_ht) && (( (ht.p - shadow_ht.p).norm() < l.norm() ))) {
-                   ht.albedo = Vec3(0., 0., 0.); // shadow point (ie null albedo) 
+                   ht.material.albedo = Vec3(0., 0., 0.); // shadow point (ie null albedo) 
                 }
 
                 double c = std::min(255., 3000 * std::max(0., l.dot(ht.normal)) / pow((ht.p- scene.light).norm(), 1));
-                img[((HEIGHT -i -1)*WIDTH + j) * 3] =  c * ht.albedo.x;     // RED
-                img[((HEIGHT -i -1)*WIDTH + j) * 3 + 1] = c * ht.albedo.y; // GREEN
-                img[((HEIGHT -i -1)*WIDTH + j) * 3 + 2] = c * ht.albedo.z; // BLUE
+                img[((HEIGHT -i -1)*WIDTH + j) * 3] =  c * ht.material.albedo.x;     // RED
+                img[((HEIGHT -i -1)*WIDTH + j) * 3 + 1] = c * ht.material.albedo.y; // GREEN
+                img[((HEIGHT -i -1)*WIDTH + j) * 3 + 2] = c * ht.material.albedo.z; // BLUE
             }
         }
     }
