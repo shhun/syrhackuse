@@ -24,45 +24,96 @@ Vec3 reflect(Vec3 i, Vec3 n) {
     return i - (n*2*(n*i));
 }
 
+inline double square(double x) {
+    return x * x;
+}
+
+Vec3 refract(Vec3 i, Vec3 n, double nair, double nsphere) {
+    // @i incident vector
+    // @n normal vector
+    // reflects a ray @i on a specular surface
+    // of normal @n
+
+    auto left = i * (nair/nsphere);
+    auto root = 1 - square(nair/nsphere)*(1. - square(i * n)); 
+    auto right = n * ((nair/nsphere) * (i*n) + sqrt(root));
+
+    return left - right;
+}
+
+
 Vec3 get_color(Scene scene, Ray r, int nb_rebound) {
+    // returns the color of the object (or black if there is none)
+    // hit by the @ray in @scene. Specular materials are allowed
+    // @nb_rebound of light rebound.
     Vec3 color = Vec3(0., 0., 0.);
     Hit_record ht, shadow_ht;
 
     if (scene.hit(r, ht)) {
-        Vec3 l_ = (scene.light- r.point_at_parameter(ht.t));
-        Vec3 l = (scene.light- r.point_at_parameter(ht.t)).normalize();
+        Vec3 p = ht.p;
+        Vec3 l_ = (scene.light- p);
+        Vec3 l = (scene.light- p).normalize();
 
         if (nb_rebound > 0 && ht.material.is_specular()) { // specular
             Ray reflected_ray(ht.p+ (ht.normal * EPSILON), reflect(r.direction.normalize(), ht.normal));
             color = get_color(scene, reflected_ray, nb_rebound -1);
-        } 
+        } else if (nb_rebound > 0 && ht.material.is_transparent()) { // transparent
+            double nair = 1.;
+            double nsphere = 1.3;
 
+            Vec3 i = r.direction.normalize();
+            Vec3 n = ht.normal;
+
+            if (r.direction * ht.normal > 0) { // leaving the sphere
+                // swap refraction indices and invert local normal
+                double tmp;
+                tmp = nsphere;
+                nsphere = nair;
+                nair = tmp;
+                n = Vec3() -n;
+            }
+
+            auto root = 1 - square(nair/nsphere)*(1. - square(i * n)); 
+            if (root > 0) {
+                double nr = nair/nsphere;
+                Vec3 refr_dir = i * nr - n * (i * n) - n * sqrt(root);
+                Ray refracted_ray(ht.p +  (n * -EPSILON), refr_dir);
+                color = get_color(scene, refracted_ray, nb_rebound -1);
+            }
             
-        Ray shadow_ray(ht.p + (ht.normal * EPSILON), l);
+        } else {
+    
+         
+            
+        Ray shadow_ray(p + (ht.normal * EPSILON), l);
 
-        if (scene.hit(shadow_ray, shadow_ht) && (( (ht.p - shadow_ht.p).norm() < l.norm() ))) {
-           ht.material.albedo = Vec3(0., 0., 0.); // shadow point (ie null albedo) 
+        double c = std::min(255., 3000 * std::max(0., l.dot(ht.normal)) / pow((p- scene.light).norm(), 1));
+
+        if (scene.hit(shadow_ray, shadow_ht) &&   (( (p - shadow_ht.p).norm() < l_.norm() ))) {
+            return Vec3(0., 0., 0.); // shadow pixel
         }
 
-        double c = std::min(255., 3000 * std::max(0., l.dot(ht.normal)) / pow((ht.p- scene.light).norm(), 1));
         color.x +=  std::min(255., c * ht.material.albedo.x);     // RED
         color.y += std::min(255., c * ht.material.albedo.y); // GREEN
         color.z += std::min(255., c * ht.material.albedo.z); // BLUE
+        }
     }
-
-
     return color;
 }
 
+
 int main() {
 
+    //------------------------- Scene setup -----------------------------------------
     Scene scene;
 
     vector<unsigned char> img(WIDTH*HEIGHT*3, 0);
-    Vec3 camera(0., 0., 5.);
+    Vec3 camera(0., 0., 7.);
     Hit_record ht, shadow_ht;
     Material mirror(Vec3(.0, .0, .0), true);
-    Sphere sphere(Vec3(0., 0., -1.), 1);
+    Material glass(Vec3(1., .0, .0), false, true);
+    //Sphere sphere(Vec3(0., 1., 0.), 1, Vec3(1., 1., 1.));
+    Sphere sphere(Vec3(0., 0., 0.), 1, glass);
     Sphere sphere_inv(Vec3(0., 3., -1.), 1, mirror);
 
      
@@ -72,9 +123,9 @@ int main() {
     Sphere left_wall(Vec3(-1000., 0., 0.), 998, Vec3(.5, 0., 5.));
     Sphere right_wall(Vec3(1000., 0., 0.), 998, Vec3(0., 5., 5.));
 
-    scene.objects.push_back(sphere_inv);
+    //scene.objects.push_back(sphere_inv);
     scene.objects.push_back(sphere);
-    //scene.objects.push_back(background);
+    scene.objects.push_back(background);
     scene.objects.push_back(left_wall);
     scene.objects.push_back(right_wall);
     scene.objects.push_back(ground);
@@ -82,6 +133,8 @@ int main() {
 
     float fov = 60 * (PI/180); //FOV in radiant
 
+
+    //------------------------- Compute image -----------------------------------------
     for (int i = 0; i < HEIGHT; i++) {
         for (int j = 0; j < WIDTH; j++) {
             
