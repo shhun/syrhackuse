@@ -14,7 +14,7 @@ struct Scene {
  
     Scene (void) {
         this->objects = *(new vector<Sphere>);
-        this->objects.reserve(100);
+        this->objects.reserve(100);       // Meh
         this->light = Vec3(0., 10., 10.); //TODO fixed light for now
     };
 
