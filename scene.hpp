@@ -11,12 +11,14 @@ using namespace std;
 struct Scene {
     vector<Sphere> objects;
     Vec3 light;
+    double I;
  
     Scene (void) {
         this->objects = *(new vector<Sphere>);
         this->objects.reserve(100);       // Meh
-        this->light = Vec3(0., 10., 10.); //TODO fixed light for now
-    };
+        this->light = Vec3(0., 10, 10.); //TODO fixed light for now
+        this->I = 4000;
+    }
 
     bool hit(Ray ray, Hit_record &ht) {
         Hit_record tmp_ht;
