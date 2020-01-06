@@ -68,6 +68,15 @@ struct Vec3 {
     Vec3 outer(double f){
       return Vec3(this->x * f, this->y * f, this->z * f);
     }
+
+    // cross product
+    Vec3 cross(Vec3 v) {
+        return Vec3(
+                this->y * v.z - this->z * v.y,
+                this->z * v.x - this->x * v.z,
+                this->x * v.y - this->y * v.x
+                );
+    }
 };
 
 #endif
